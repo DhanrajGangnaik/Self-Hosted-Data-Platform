@@ -42,11 +42,14 @@ WAL archiving enabled with atomic transfer.
 SELECT pg_is_in_recovery();
 SELECT client_addr, state, sync_state FROM pg_stat_replication;
 SELECT archived_count, failed_count FROM pg_stat_archiver;
-
+```
 ### On Replica
 
 ```sql
 SELECT pg_is_in_recovery();
+```
+
+---
 
 ### Incident Summary
 
@@ -59,3 +62,4 @@ SELECT pg_is_in_recovery();
 - The cluster required WAL reset and architecture hardening.
 
 - Full breakdown available in troubleshooting/wal-loss-incident.md.
+
