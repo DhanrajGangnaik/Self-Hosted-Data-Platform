@@ -34,6 +34,49 @@ WAL archiving enabled with atomic transfer.
 
 ---
 
+## Phase 2 – Observability Stack
+
+- Monitoring Components
+
+Prometheus
+
+PostgreSQL exporter
+
+Grafana dashboards
+
+Alert rules
+
+Alertmanager
+
+- Metrics Pipeline
+
+```
+PostgreSQL
+     │
+postgres_exporter
+     │
+Prometheus
+     │
+Grafana dashboards
+```
+
+- Alerting Pipeline
+```
+Prometheus
+     │
+Alertmanager
+     │
+Notification channels
+```
+
+- Current alerts include:
+
+PostgreSQLDown
+
+Database availability monitoring
+
+---
+
 ## Verification Commands
 
 ### On Primary
