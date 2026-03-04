@@ -1,0 +1,11 @@
+groups:
+- name: postgres
+  rules:
+  - alert: PostgreSQLDown
+    expr: pg_up == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: PostgreSQL instance down
+      description: "PostgreSQL exporter reports pg_up=0 for {{ $labels.instance }}"

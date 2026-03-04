@@ -1,0 +1,5 @@
+- targets:
+  - "target-1-IP:9187"
+  - "target-2-IP:9187"
+  labels:
+    job: "postgres"
