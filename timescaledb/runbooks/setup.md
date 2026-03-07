@@ -73,8 +73,4 @@ curl localhost:9100/metrics
 
 In Prometheus UI:
 
-Status
-
-Targets
-
-verify node-exporter target is UP
+Status > Targets > verify node-exporter target is UP
