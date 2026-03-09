@@ -1,54 +1,180 @@
-# Self-Hosted Data Platform – Phase 1
+#  Self-Hosted Data Platform
 
-## Overview
+### High-Availability Databases • Observability • Log Analytics • Time-Series Processing
 
-This project implements a PostgreSQL 16 high-availability architecture with:
+<p align="center">
 
-- Primary node 
-- Streaming replica
-- Dedicated WAL archive host 
-- Replication slot
-- Atomic WAL archiving via rsync + SSH
-- Incident recovery (missing WAL segment case study)
+<!-- ![Platform Architecture](architecture/diagrams.png) -->
+
+</p>
 
 ---
 
-## Architecture
+# 📌 Overview
 
-Primary → Streaming Replica  
-Primary → WAL Archive Host  
+**Self-Hosted Data Platform** is a production-style infrastructure platform built using open-source technologies.
+The project demonstrates how to design, operate, and observe a **high-availability data system** with integrated monitoring, log analytics, and time-series processing.
 
-Streaming replication with replication slot.  
-WAL archiving enabled with atomic transfer.
+The platform combines multiple infrastructure components into a cohesive architecture:
+
+* PostgreSQL High Availability cluster
+* WAL archival and recovery workflows
+* Prometheus-based monitoring stack
+* Grafana dashboards
+* Alertmanager-driven alerting
+* ClickHouse log analytics
+* Fluent Bit log ingestion
+* TimescaleDB time-series analytics
+
+The goal of this project is to simulate **real-world data platform operations** similar to those used by SRE and DevOps teams.
 
 ---
 
-## Phase 1 Components
+# 🏗 Architecture
 
-- PostgreSQL Primary (writable)
-- PostgreSQL Replica (read-only)
-- WAL Archiving Host
-- Replication Role
-- pg_hba network authentication
-- Incident handling and recovery documentation
+The platform architecture integrates **database replication, observability, and log analytics pipelines**.
+
+```
+                           ┌──────────────────────────┐
+                           │         Grafana          │
+                           │  Dashboards & Analytics  │
+                           └─────────────┬────────────┘
+                                         │
+                          ┌──────────────▼──────────────┐
+                          │          Prometheus         │
+                          │        Metrics Engine       │
+                          └───────┬───────────┬─────────┘
+                                  │           │
+                       ┌──────────▼───┐   ┌───▼──────────┐
+                       │ postgres_    │   │ redis_       │
+                       │ exporter     │   │ exporter     │
+                       └───────┬──────┘   └──────┬───────┘
+                               │                 │
+                     ┌─────────▼────────┐   ┌────▼─────┐
+                     │ PostgreSQL HA    │   │  Redis   │
+                     │ Primary + Replica│   │  Cache   │
+                     └───────┬──────────┘   └──────────┘
+                             │
+                             ▼
+                      WAL Archive Host
+
+
+     ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+     │ Edge Proxy   │ ───► │  Fluent Bit  │ ───► │  ClickHouse  │
+     │ Application  │      │ Log Collector│      │ Log Storage  │
+     └──────────────┘      └──────────────┘      └──────┬───────┘
+                                                         ▼
+                                                      Grafana
+                                                   Log Analytics
+```
 
 ---
 
-## Phase 2 – Observability Stack
+# ⚙️ Technology Stack
 
-- Monitoring Components
+### Databases
 
-Prometheus
+* PostgreSQL 16
+* TimescaleDB
+* Redis
 
-PostgreSQL exporter
+### Observability
 
-Grafana dashboards
+* Prometheus
+* Grafana
+* Alertmanager
+* postgres_exporter
+* redis_exporter
+* node_exporter
 
-Alert rules
+### Log Analytics
 
-Alertmanager
+* Fluent Bit
+* ClickHouse
 
-- Metrics Pipeline
+### Infrastructure
+
+* Linux
+* SSH / rsync
+* WAL archiving
+* Streaming replication
+
+---
+
+# 📊 Platform Capabilities
+
+### 🔹 Database High Availability
+
+* PostgreSQL primary node
+* Streaming replica
+* Replication slot
+* WAL archiving host
+* Failover-ready architecture
+
+### 🔹 Observability & Monitoring
+
+* Prometheus metrics collection
+* Grafana dashboards
+* Database health monitoring
+* Alertmanager alerts
+
+### 🔹 Log Analytics
+
+* Fluent Bit log ingestion
+* ClickHouse storage
+* Grafana log dashboards
+
+### 🔹 Time-Series Analytics
+
+* TimescaleDB hypertables
+* Continuous aggregates
+* Retention policies
+
+### 🔹 Incident Documentation
+
+* WAL loss recovery case study
+* Operational runbooks
+* Platform troubleshooting guides
+
+---
+
+# 📂 Repository Structure
+
+```
+Self-Hosted-Data-Platform
+│
+├── architecture
+│   ├── components.md
+│   ├── diagrams.png
+│   └── topology.md
+│
+├── docs
+│   ├── phases.md
+│   └── runbooks
+│
+├── observability
+│   ├── prometheus
+│   ├── grafana
+│   └── alertmanager
+│
+├── log-analytics
+│   ├── clickhouse
+│   ├── fluent-bit
+│   └── grafana
+│
+├── postgres-primary
+├── postgres-replica
+├── wal-archive
+├── timescaledb
+├── scripts
+├── troubleshooting
+│
+└── README.md
+```
+
+---
+
+# 📈 Metrics Pipeline
 
 ```
 PostgreSQL
@@ -57,52 +183,136 @@ postgres_exporter
      │
 Prometheus
      │
-Grafana dashboards
+Grafana Dashboards
 ```
 
-- Alerting Pipeline
+### Example Metrics
+
+* Active connections
+* Transaction rate
+* Cache hit ratio
+* Database size
+* WAL activity
+* Query performance
+
+---
+
+# 🚨 Alerting Pipeline
+
 ```
 Prometheus
      │
 Alertmanager
      │
-Notification channels
+Notification Channels
 ```
 
-- Current alerts include:
+Example alert:
 
-PostgreSQLDown
+**PostgreSQLDown**
 
-Database availability monitoring
+Triggers when the database exporter reports that PostgreSQL is unavailable.
 
 ---
 
-## Verification Commands
+# 🔍 Verification
 
-### On Primary
+### On Primary Node
 
 ```sql
 SELECT pg_is_in_recovery();
-SELECT client_addr, state, sync_state FROM pg_stat_replication;
-SELECT archived_count, failed_count FROM pg_stat_archiver;
+
+SELECT client_addr, state, sync_state
+FROM pg_stat_replication;
+
+SELECT archived_count, failed_count
+FROM pg_stat_archiver;
 ```
-### On Replica
+
+### On Replica Node
 
 ```sql
 SELECT pg_is_in_recovery();
+```
+
+Expected result:
+
+```
+t
 ```
 
 ---
 
-### Incident Summary
+# ⚠️ Incident Case Study
 
-- A WAL segment was lost during archiving, causing:
+During testing, a WAL segment loss caused PostgreSQL startup failure:
 
-- invalid checkpoint record
+```
+invalid checkpoint record
+could not locate a valid checkpoint record
+```
 
-- could not locate a valid checkpoint record
+The issue required:
 
-- The cluster required WAL reset and architecture hardening.
+* WAL reset
+* archive configuration hardening
+* replication recovery
 
-- Full breakdown available in troubleshooting/wal-loss-incident.md.
+<!-- Detailed breakdown available in: 
+
+```
+troubleshooting/wal-loss-incident.md
+```
+-->
+---
+
+# 📷 Dashboards
+
+The platform includes dashboards for:
+
+* PostgreSQL metrics
+* Redis monitoring
+* TimescaleDB metrics
+* Log analytics
+* System health
+
+Located in:
+
+```
+observability/grafana/dashboards
+```
+
+---
+
+# 🎯 Project Goals
+
+This platform demonstrates:
+
+* Infrastructure reliability design
+* Observability architecture
+* Real-world database operations
+* Incident handling workflows
+* Data platform engineering practices
+
+The repository is structured to resemble **a real production SRE / DevOps platform project**.
+
+---
+
+# 📜 License
+
+MIT License
+
+---
+
+# ⭐ Future Improvements
+
+Planned upgrades:
+
+* automated failover
+* distributed tracing
+* anomaly detection
+* infrastructure as code deployment
+* unified observability dashboards
+
+
 
