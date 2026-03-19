@@ -27,3 +27,25 @@
 - Prometheus scrape configuration
 - Grafana cache performance dashboards
 - Alerts for cache health and memory usage
+  
+## Phase 6: Log Analytics + Detection
+
+### Completed
+
+- nginx log ingestion
+- parsing into structured JSON
+- TimescaleDB storage
+- hypertable creation
+- continuous aggregates
+- detection rules
+- alert table
+- cron automation
+
+### Lessons Learned
+
+- Hypertables cannot enforce unique constraints without partition key
+- Detection tables should NOT be hypertables
+- Cron runs with minimal environment (PATH issues)
+- `.pgpass` required for non-interactive execution
+- `ON CONFLICT DO NOTHING` ensures idempotency
+

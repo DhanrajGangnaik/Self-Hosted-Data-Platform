@@ -192,3 +192,31 @@ If you want stricter errors only:
 ```
 toInt32(level) <= 3
 ```
+
+---
+
+## Security Dashboards
+
+### Traffic Overview
+
+#### Requests Per Minute
+```sql
+SELECT bucket AS "time", total_requests FROM request_rate_1m;
+```
+
+#### Top IPs
+```
+SELECT raw_event->>'ip' AS ip, count(*) FROM security_events GROUP BY ip ORDER BY count DESC LIMIT 10;
+```
+
+### Detection Dashboard
+
+#### Recent Alerts
+```
+SELECT alert_time, rule_name, severity, entity FROM detection_alerts_v2 ORDER BY alert_time DESC;
+```
+
+#### Alerts by Rule
+```
+SELECT rule_name, count(*) FROM detection_alerts_v2 GROUP BY rule_name;
+```

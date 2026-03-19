@@ -101,3 +101,8 @@ WHERE toInt32(level) <= 3
 GROUP BY service
 ORDER BY errors DESC;
 ```
+---
+
+- Final implementation uses TimescaleDB instead of ClickHouse for detection pipeline.
+
+- ClickHouse setup retained for future evaluation.

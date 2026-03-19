@@ -1,318 +1,146 @@
-#  Self-Hosted Data Platform
+# Self-Hosted Data Platform
 
-### High-Availability Databases • Observability • Log Analytics • Time-Series Processing
+Production-style homelab platform combining:
 
-<p align="center">
-
-<!-- ![Platform Architecture](architecture/diagrams.png) -->
-
-</p>
-
----
-
-# 📌 Overview
-
-**Self-Hosted Data Platform** is a production-style infrastructure platform built using open-source technologies.
-The project demonstrates how to design, operate, and observe a **high-availability data system** with integrated monitoring, log analytics, and time-series processing.
-
-The platform combines multiple infrastructure components into a cohesive architecture:
-
-* PostgreSQL High Availability cluster
-* WAL archival and recovery workflows
-* Prometheus-based monitoring stack
-* Grafana dashboards
-* Alertmanager-driven alerting
-* ClickHouse log analytics
-* Fluent Bit log ingestion
-* TimescaleDB time-series analytics
-
-The goal of this project is to simulate **real-world data platform operations** similar to those used by SRE and DevOps teams.
+- PostgreSQL HA (primary + replica + WAL)
+- Observability (Prometheus, Grafana, Alertmanager)
+- Log analytics (Fluent Bit + ClickHouse)
+- Time-series analytics (TimescaleDB)
+- SQL-based detection pipeline
+- pgAdmin-driven DB operations
 
 ---
 
-# 🏗 Architecture
+## Architecture
 
-The platform architecture integrates **database replication, observability, and log analytics pipelines**.
-
-```
-                           ┌──────────────────────────┐
-                           │         Grafana          │
-                           │  Dashboards & Analytics  │
-                           └─────────────┬────────────┘
-                                         │
-                          ┌──────────────▼──────────────┐
-                          │          Prometheus         │
-                          │        Metrics Engine       │
-                          └───────┬───────────┬─────────┘
-                                  │           │
-                       ┌──────────▼───┐   ┌───▼──────────┐
-                       │ postgres_    │   │ redis_       │
-                       │ exporter     │   │ exporter     │
-                       └───────┬──────┘   └──────┬───────┘
-                               │                 │
-                     ┌─────────▼────────┐   ┌────▼─────┐
-                     │ PostgreSQL HA    │   │  Redis   │
-                     │ Primary + Replica│   │  Cache   │
-                     └───────┬──────────┘   └──────────┘
-                             │
-                             ▼
-                      WAL Archive Host
-
-
-     ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-     │ Edge Proxy   │ ───► │  Fluent Bit  │ ───► │  ClickHouse  │
-     │ Application  │      │ Log Collector│      │ Log Storage  │
-     └──────────────┘      └──────────────┘      └──────┬───────┘
-                                                         ▼
-                                                      Grafana
-                                                   Log Analytics
+```text
+NGINX → Python Ingest → TimescaleDB → Aggregates → Detection → Alerts → Grafana
+                                  ↓
+                             Prometheus
+                                  ↓
+                               Grafana
 ```
 
 ---
 
-# ⚙️ Technology Stack
-
-### Databases
-
-* PostgreSQL 16
-* TimescaleDB
-* Redis
-
-### Observability
-
-* Prometheus
-* Grafana
-* Alertmanager
-* postgres_exporter
-* redis_exporter
-* node_exporter
-
-### Log Analytics
-
-* Fluent Bit
-* ClickHouse
-
-### Infrastructure
-
-* Linux
-* SSH / rsync
-* WAL archiving
-* Streaming replication
+## Core Components
+| Layer         | Stack                             |
+| ------------- | --------------------------------- |
+| Database      | PostgreSQL, TimescaleDB           |
+| Observability | Prometheus, Grafana, Alertmanager |
+| Logs          | Fluent Bit, ClickHouse            |
+| Detection     | SQL (TimescaleDB)                 |
+| Management    | pgAdmin, mgmt VM (cron)           |
 
 ---
 
-# 📊 Platform Capabilities
-
-### 🔹 Database High Availability
-
-* PostgreSQL primary node
-* Streaming replica
-* Replication slot
-* WAL archiving host
-* Failover-ready architecture
-
-### 🔹 Observability & Monitoring
-
-* Prometheus metrics collection
-* Grafana dashboards
-* Database health monitoring
-* Alertmanager alerts
-
-### 🔹 Log Analytics
-
-* Fluent Bit log ingestion
-* ClickHouse storage
-* Grafana log dashboards
-
-### 🔹 Time-Series Analytics
-
-* TimescaleDB hypertables
-* Continuous aggregates
-* Retention policies
-
-### 🔹 Incident Documentation
-
-* WAL loss recovery case study
-* Operational runbooks
-* Platform troubleshooting guides
-
----
-
-# 📂 Repository Structure
-
+## Data Pipelines
+1. Metrics
 ```
-Self-Hosted-Data-Platform
-│
-├── architecture
-│   ├── components.md
-│   ├── diagrams.png
-│   └── topology.md
-│
-├── docs
-│   ├── phases.md
-│   └── runbooks
-│
-├── observability
-│   ├── prometheus
-│   ├── grafana
-│   └── alertmanager
-│
-├── log-analytics
-│   ├── clickhouse
-│   ├── fluent-bit
-│   └── grafana
-│
-├── postgres-primary
-├── postgres-replica
-├── wal-archive
-├── timescaledb
-├── scripts
-├── troubleshooting
-│
-└── README.md
+PostgreSQL → Exporters → Prometheus → Grafana
+```
+2. Logs
+```
+Fluent Bit → ClickHouse → Grafana
+```
+3. Detection
+```NGINX logs → Python → security_events
+           → Aggregates → Detection SQL → detection_alerts_v2
 ```
 
 ---
 
-# 📈 Metrics Pipeline
+## Detection Engine
 
-```
-PostgreSQL
-     │
-postgres_exporter
-     │
-Prometheus
-     │
-Grafana Dashboards
-```
+Runs every minute via cron (mgmt VM).
 
-### Example Metrics
+### Rules
 
-* Active connections
-* Transaction rate
-* Cache hit ratio
-* Database size
-* WAL activity
-* Query performance
+Request Rate Spike
+
+- HIGH ≥ 300 req/min
+
+- MEDIUM ≥ 100 req/min
+
+Single IP Dominance
+
+- HIGH ≥ 50%
+
+- MEDIUM ≥ 30%
 
 ---
 
-# 🚨 Alerting Pipeline
-
+## Key SQL Patterns
 ```
-Prometheus
-     │
-Alertmanager
-     │
-Notification Channels
-```
+-- time-based aggregation
+time_bucket('1 minute', time)
 
-Example alert:
+-- JSON extraction
+raw_event->>'ip'
 
-**PostgreSQLDown**
+-- window function
+SUM(count(*)) OVER (...)
 
-Triggers when the database exporter reports that PostgreSQL is unavailable.
-
----
-
-# 🔍 Verification
-
-### On Primary Node
-
-```sql
-SELECT pg_is_in_recovery();
-
-SELECT client_addr, state, sync_state
-FROM pg_stat_replication;
-
-SELECT archived_count, failed_count
-FROM pg_stat_archiver;
-```
-
-### On Replica Node
-
-```sql
-SELECT pg_is_in_recovery();
-```
-
-Expected result:
-
-```
-t
+-- deduplication
+ON CONFLICT DO NOTHING
 ```
 
 ---
 
-# ⚠️ Incident Case Study
+## Alert Storage
 
-During testing, a WAL segment loss caused PostgreSQL startup failure:
+Table: ```detection_alerts_v2```
 
-```
-invalid checkpoint record
-could not locate a valid checkpoint record
-```
+- NOT a hypertable
 
-The issue required:
+- supports unique constraints
 
-* WAL reset
-* archive configuration hardening
-* replication recovery
+- prevents duplicate alerts
 
-<!-- Detailed breakdown available in: 
-
-```
-troubleshooting/wal-loss-incident.md
-```
--->
 ---
 
-# 📷 Dashboards
-
-The platform includes dashboards for:
-
-* PostgreSQL metrics
-* Redis monitoring
-* TimescaleDB metrics
-* Log analytics
-* System health
-
-Located in:
-
+## Automation
 ```
-observability/grafana/dashboards
+
+* * * * * /usr/bin/psql -h <DB> -U <USER> -d metrics -f detect.sql
 ```
 
 ---
 
-# 🎯 Project Goals
+## pgAdmin Usage
 
-This platform demonstrates:
+Used for:
 
-* Infrastructure reliability design
-* Observability architecture
-* Real-world database operations
-* Incident handling workflows
-* Data platform engineering practices
+- query debugging
 
-The repository is structured to resemble **a real production SRE / DevOps platform project**.
+- aggregate validation
 
----
+- alert inspection
 
-# 📜 License
-
-MIT License
+- schema verification
 
 ---
 
-# ⭐ Future Improvements
+## Key Challenges
 
-Planned upgrades:
+- log ingestion from correct host (edge vs mgmt)
 
-* automated failover
-* distributed tracing
-* anomaly detection
-* infrastructure as code deployment
-* unified observability dashboards
+- TimescaleDB unique index limitation
+
+- cron silent execution
+
+- PostgreSQL connection mismatches
+
+- Python (PEP 668) environment restrictions
 
 
+---
 
+## Limitations
+
+- rule-based detection only
+
+- no real-time streaming
+
+- no automated response system
+- 

@@ -26,3 +26,27 @@ Log collection and transformation agent.
 
 ## ClickHouse
 Column-oriented database for log analytics.
+
+---
+
+# Detection Layer
+
+Runs SQL-based detection rules on aggregated data.
+
+Location:
+- mgmt-1 VM
+
+Components:
+- detect.sql
+- cron job
+
+---
+
+## Alert Storage
+
+Table:
+- detection_alerts_v2
+
+Properties:
+- not hypertable
+- supports unique constraints
