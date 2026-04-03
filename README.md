@@ -1,77 +1,110 @@
-# Self-Hosted Data Platform
+#  Self-Hosted Data Platform
 
-Production-style homelab platform combining:
+A production-style, self-hosted data platform designed to simulate real-world **observability, log analytics, and detection systems** within a homelab environment.
 
-- PostgreSQL HA (primary + replica + WAL)
-- Observability (Prometheus, Grafana, Alertmanager)
-- Log analytics (Fluent Bit + ClickHouse)
-- Time-series analytics (TimescaleDB)
-- SQL-based detection pipeline
-- pgAdmin-driven DB operations
+This platform integrates **databases, monitoring, logging, and SQL-based detection pipelines** into a cohesive system focused on reliability, visibility, and operational workflows.
 
 ---
 
-## Architecture
+##  Overview
 
-```text
-NGINX → Python Ingest → TimescaleDB → Aggregates → Detection → Alerts → Grafana
-                                  ↓
-                             Prometheus
-                                  ↓
-                               Grafana
-```
+The platform is built around three core capabilities:
 
----
+* **Metrics Observability** → system + database monitoring
+* **Log Analytics** → structured log ingestion and querying
+* **Detection Engine** → SQL-driven security/event detection
 
-## Core Components
-| Layer         | Stack                             |
-| ------------- | --------------------------------- |
-| Database      | PostgreSQL, TimescaleDB           |
-| Observability | Prometheus, Grafana, Alertmanager |
-| Logs          | Fluent Bit, ClickHouse            |
-| Detection     | SQL (TimescaleDB)                 |
-| Management    | pgAdmin, mgmt VM (cron)           |
+All components are self-hosted and interconnected to replicate **real production data flows**.
 
 ---
 
-## Data Pipelines
-1. Metrics
-```
-PostgreSQL → Exporters → Prometheus → Grafana
-```
-2. Logs
-```
-Fluent Bit → ClickHouse → Grafana
-```
-3. Detection
-```NGINX logs → Python → security_events
-           → Aggregates → Detection SQL → detection_alerts_v2
-```
+##  Architecture
+
+![Root Architecture](./diagrams/root-architecture.png)
+
+The system is composed of:
+
+* PostgreSQL HA cluster with WAL archiving
+* TimescaleDB for time-series analytics
+* Prometheus-based observability stack
+* Fluent Bit → ClickHouse log pipeline
+* SQL-driven detection engine with scheduled execution
 
 ---
 
-## Detection Engine
+##  Core Components
 
-Runs every minute via cron (mgmt VM).
-
-### Rules
-
-Request Rate Spike
-
-- HIGH ≥ 300 req/min
-
-- MEDIUM ≥ 100 req/min
-
-Single IP Dominance
-
-- HIGH ≥ 50%
-
-- MEDIUM ≥ 30%
+| Layer             | Technologies                      | Purpose                                     |
+| ----------------- | --------------------------------- | ------------------------------------------- |
+| **Database**      | PostgreSQL, TimescaleDB           | transactional + time-series storage         |
+| **Observability** | Prometheus, Grafana, Alertmanager | metrics collection, visualization, alerting |
+| **Logs**          | Fluent Bit, ClickHouse            | log ingestion and analytics                 |
+| **Detection**     | SQL (TimescaleDB)                 | rule-based anomaly detection                |
+| **Management**    | pgAdmin, Cron (mgmt VM)           | operations and automation                   |
 
 ---
 
-## Key SQL Patterns
-```
+##  Data Pipelines
+
+###  Metrics Pipeline
+
+![Metrics Pipeline](./diagrams/metrics-pipeline.png)
+
+* Exporters expose database + node metrics
+* Prometheus scrapes and stores time-series data
+* Grafana provides dashboards
+* Alertmanager handles alert routing
+
+---
+
+###  Log Analytics Pipeline
+
+![Logs Pipeline](./diagrams/logs-pipeline.png)
+
+* NGINX and application logs are collected
+* Fluent Bit parses and forwards logs
+* ClickHouse stores logs in columnar format
+* Grafana enables log querying and visualization
+
+---
+
+###  Detection Pipeline
+
+![Detection Pipeline](./diagrams/detection-pipeline.png)
+
+* Logs → Python ingest → TimescaleDB (`security_events`)
+* Aggregations computed using time buckets
+* SQL rules evaluate anomalies
+* Alerts stored in `detection_alerts_v2`
+* Grafana dashboards visualize alerts
+
+---
+
+##  Detection Engine
+
+The detection system runs as a **scheduled SQL execution pipeline**:
+
+* Triggered every minute via cron
+* Operates on aggregated time-series data
+* Produces structured alerts stored in PostgreSQL
+
+### Example Rules
+
+**Request Rate Spike**
+
+* HIGH ≥ 300 req/min
+* MEDIUM ≥ 100 req/min
+
+**Single IP Dominance**
+
+* HIGH ≥ 50%
+* MEDIUM ≥ 30%
+
+---
+
+##  Key SQL Patterns
+
+```sql
 -- time-based aggregation
 time_bucket('1 minute', time)
 
@@ -85,62 +118,89 @@ SUM(count(*)) OVER (...)
 ON CONFLICT DO NOTHING
 ```
 
----
-
-## Alert Storage
-
-Table: ```detection_alerts_v2```
-
-- NOT a hypertable
-
-- supports unique constraints
-
-- prevents duplicate alerts
+These patterns enable efficient **time-series aggregation, anomaly detection, and deduplicated alerting**.
 
 ---
 
-## Automation
-```
+##  Alert Storage Design
 
+Table: `detection_alerts_v2`
+
+* Standard PostgreSQL table (not hypertable)
+* Supports **unique constraints for deduplication**
+* Optimized for **alert querying and inspection**
+
+---
+
+##  Automation
+
+Detection queries are executed via cron:
+
+```bash
 * * * * * /usr/bin/psql -h <DB> -U <USER> -d metrics -f detect.sql
 ```
 
----
-
-## pgAdmin Usage
-
-Used for:
-
-- query debugging
-
-- aggregate validation
-
-- alert inspection
-
-- schema verification
+This enables **continuous evaluation without external orchestration tools**.
 
 ---
 
-## Key Challenges
+##  Operations (pgAdmin)
 
-- log ingestion from correct host (edge vs mgmt)
+pgAdmin is used for:
 
-- TimescaleDB unique index limitation
-
-- cron silent execution
-
-- PostgreSQL connection mismatches
-
-- Python (PEP 668) environment restrictions
-
+* Query debugging and validation
+* Aggregate verification
+* Alert inspection
+* Schema management
 
 ---
 
-## Limitations
+## ⚠️ Key Engineering Challenges
 
-- rule-based detection only
+* Correct log ingestion source (edge vs management network)
+* TimescaleDB limitations with unique constraints
+* Silent cron execution debugging
+* PostgreSQL connection mismatches across services
+* Python environment restrictions (PEP 668)
 
-- no real-time streaming
+---
 
-- no automated response system
-- 
+##  Limitations
+
+* Rule-based detection only (no ML/AI models)
+* Batch execution (no real-time streaming)
+* No automated response/remediation system
+
+---
+
+##  Future Improvements
+
+* Real-time streaming (Kafka / Redpanda)
+* OpenTelemetry-based unified observability
+* Distributed ClickHouse cluster
+* Advanced detection (behavioral / anomaly models)
+* Automated alert response workflows
+
+---
+
+##  Project Scope
+
+This project is designed to demonstrate:
+
+* End-to-end data platform architecture
+* Observability and monitoring design
+* Log ingestion and analytics pipelines
+* SQL-based detection systems
+* Production-style debugging and operations
+
+---
+
+##  Summary
+
+This platform replicates a **mini production data ecosystem**, combining:
+
+* infrastructure observability
+* log analytics
+* detection engineering
+
+into a single, self-hosted system suitable for experimentation, learning, and portfolio demonstration.
